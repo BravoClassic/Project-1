@@ -45,9 +45,22 @@ def prepare_input(credit_score, location, gender, age, tenure, balance, num_prod
     'Gender_Female': 1 if gender == "Female" else 0
     }
     input_df = pd.DataFrame([input_dict])
-    return input_df, input_dict
+    customer_data = {
+        "CreditScore": credit_score,
+        "Geography": location,
+        "Gender": gender,
+        "Age": age,
+        "Tenure": tenure,
+        "Balance": balance,
+        "NumOfProducts": num_products,
+        "HasCrCard": has_credit_card,
+        "IsActiveMember": is_active_member,
+        "EstimatedSalary": estimated_salary,
+    }
+    return input_df, input_dict, customer_data
 
-def make_predictions(input_df, input_dict):
+def make_predictions(input_df, input_dict, customer_dt):
+    print(input_df)
     probabilities = {
     'XGgoost': xgb_model.predict_proba(input_df)[0][1],
     # 'Random Forest': rf_model.predict_proba(input_df)[0][1],
@@ -56,7 +69,7 @@ def make_predictions(input_df, input_dict):
     'Support Vector Model': svm_model.predict_proba(input_df)[0][1]
     }
     url =  "https://churn-model-xvgz.onrender.com/predict"
-    response = requests.post(url, json=input_dict)
+    response = requests.post(url, json=customer_dt)
     if response.status_code == 200:
         print("Model api")
         result = response.json()
@@ -163,7 +176,7 @@ def generate_email(probability, input_dict, explanation, surname):
 st.title("Churn Prediction")
 
 df = pd.read_csv("churn.csv")
-
+print(df)
 
 customers = [ f"{row['CustomerId']} - {row['Surname']}" for _, row in df.iterrows()]
 selected_customer_option = st.selectbox("Select a customer", customers)
@@ -175,7 +188,7 @@ if selected_customer_option:
     # print(f"Surname: {selected_customer_surname}")
 
     selected_customer = df.loc[selected_customer_id == df['CustomerId']].iloc[0]
-    # print(f"Selected customer", selected_customer)
+    print(f"Selected customer", selected_customer)
 
     col1, col2 = st.columns(2)
 
@@ -187,6 +200,7 @@ if selected_customer_option:
         "Age", min_value=18, max_value=100,
         value=int( selected_customer[ 'Age']))
         tenure = st.number_input("Tenure (years)", min_value=0, max_value=50, value=int(selected_customer ['Tenure']))
+
     
     with col2:
         balance = st. number_input("Balance", min_value=0.0,value=float (selected_customer['Balance']))
@@ -196,9 +210,9 @@ if selected_customer_option:
         estimated_salary = st.number_input("Estimated Salary", min_value=0.0,value=float(selected_customer['EstimatedSalary']))
 
 
-    input_df, input_dict = prepare_input(credit_score,location,gender,age,tenure,balance, num_products,has_credit_card,is_active_member,estimated_salary)
+    input_df, input_dict, customer_dt = prepare_input(credit_score,location,gender,age,tenure,balance, num_products,has_credit_card,is_active_member,estimated_salary)
 
-    avg_probability = make_predictions(input_df, input_dict)
+    avg_probability = make_predictions(input_df, input_dict, customer_dt)
 
     explanation = explain_prediction(avg_probability, input_dict, selected_customer['Surname'])
 
